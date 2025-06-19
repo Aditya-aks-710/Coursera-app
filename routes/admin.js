@@ -1,9 +1,9 @@
 const bcrypt = require("bcrypt");
+const { z } = require("zod");
 const jwt = require("jsonwebtoken");
 const { Router } = require("express");
 const { adminModel, courseModel } = require("../db");
 const { adminAuth } = require("../middleware/adminauth");
-const { signupSchema, signinSchema } = require("../validators/admin");
 const { signupSchema, signinSchema } = require("../validators/admin");
 const adminRouter = Router();
 

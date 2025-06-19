@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const { z } = require("zod");
 const { Router } = require("express");
 const { userModel, purchaseModel, courseModel } = require("../db");
 const { userAuth } = require("../middleware/userauth");

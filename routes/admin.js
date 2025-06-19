@@ -3,65 +3,83 @@ const jwt = require("jsonwebtoken");
 const { Router } = require("express");
 const { adminModel, courseModel } = require("../db");
 const { adminAuth } = require("../middleware/adminauth");
+const { signupSchema, signinSchema } = require("../validators/admin");
+const { signupSchema, signinSchema } = require("../validators/admin");
 const adminRouter = Router();
 
 adminRouter.post("/signup", async function(req, res) {
-    const email = req.body.email;
-    const password = req.body.password;
-    const name = req.body.name;
+    try{
+        const { email, password, name } = signupSchema.parse(req.body);
 
-    const response = await adminModel.findOne({
-        email: email
-    });
+        const response = await adminModel.findOne({
+            email: email
+        });
 
-    if(response){
-        return res.status(409).json({
-            message: "email already exists"
+        if(response){
+            return res.status(409).json({
+                message: "email already exists"
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, parseInt(process.env.SALT_ROUND));
+
+        await adminModel.create({
+            email: email,
+            password: hashedPassword,
+            name: name
+        });
+
+        res.status(201).json({
+            message: "Signin successful"
+        });
+    } catch (err) {
+        if(err instanceof z.ZodError) {
+            return res.status(400).json({
+                errors: err.errors
+            });
+        }
+        return res.status(500).json({
+            message: "Internal Server Error"
         });
     }
-
-    const hashedPassword = await bcrypt.hash(password, parseInt(process.env.SALT_ROUND));
-
-    await adminModel.create({
-        email: email,
-        password: hashedPassword,
-        name: name
-    });
-
-    res.status(201).json({
-        message: "Signin successful"
-    });
 });
 
 adminRouter.post("/signin", async function(req, res) {
-    const email = req.body.email;
-    const password = req.body.password;
+    try {
+        const { email, password } = signinSchema.parse(req.body);
 
-    const response = await adminModel.findOne({
-        email: email
-    });
-
-    const passwordMatched = await bcrypt.compare(password, response.password);
-
-    if(response && passwordMatched){
-        const token = jwt.sign({
-            id: response._id.toString()
-        }, process.env.JWT_SECRET_ADMIN);
-        res.status(201).json({
-            token: token
+        const response = await adminModel.findOne({
+            email: email
         });
-    } else {
-        res.status().json({
-            message: "Incorrect email and password"
+
+        const passwordMatched = await bcrypt.compare(password, response.password);
+
+        if(response && passwordMatched){
+            const token = jwt.sign({
+                id: response._id.toString()
+            }, process.env.JWT_SECRET_ADMIN);
+            res.status(201).json({
+                token: token
+            });
+        } else {
+            res.status().json({
+                message: "Incorrect email and password"
+            });
+        }
+    } catch (err) {
+        if(err instanceof z.ZodError) {
+            return res.status(400).json({
+                errors: err.errors
+            });
+        }
+        return res.status(500).json({
+            message: "Internal Server error"
         });
     }
 });
 
 adminRouter.post("/course", adminAuth, async function(req, res) {
-    const title = req.body.title;
-    const description = req.body.description;
-    const price = req.body.price;
-    const imageURL = req.body.imageURL;
+    const { title, description, price, imageURL } = req.body;
 
     await courseModel.create({
         title: title,

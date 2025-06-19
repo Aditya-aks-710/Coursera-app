@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Router } = require("express");
 const { adminModel, courseModel } = require("../db");
-const { adminAuth } = require("../auth");
+const { adminAuth } = require("../middleware/adminauth");
 const adminRouter = Router();
 
 adminRouter.post("/signup", async function(req, res) {
@@ -46,7 +46,7 @@ adminRouter.post("/signin", async function(req, res) {
     if(response && passwordMatched){
         const token = jwt.sign({
             id: response._id.toString()
-        }, process.env.JWT_SECRET);
+        }, process.env.JWT_SECRET_ADMIN);
         res.status(201).json({
             token: token
         });
@@ -76,18 +76,42 @@ adminRouter.post("/course", adminAuth, async function(req, res) {
 });
 
 adminRouter.put("/course/edit", adminAuth, async function(req, res) {
-    const admin = await courseModel.findOne({
-        creatorId: req.userId
+    const { _id, title, description, price, imageURL } = req.body;
+    
+    const updatedCourse = await courseModel.findOneAndUpdate(
+        { _id: _id, creatorId: req.userId },
+        {
+            $set: {
+                title: title,
+                description: description,
+                price: price,
+                imageURL: imageURL
+            }
+        },
+        {
+            new: true
+        }
+    )
+    if(!updatedCourse) {
+        return res.status(403).json({
+            message: "Unable to edit this course"
+        });
+    }
+    res.status(200).json({
+        message: "Edit success"
     });
-    console.log(admin);
 });
 
 adminRouter.get("/course/preview", adminAuth, async function(req, res) {
     const courses = await courseModel.find({
         creatorId: req.userId
     });
-    console.log(courses);
-    res.json({courses});
+    if(courses.size == 0){
+        return res.status(401).json({
+            mmessage: "No course found"
+        });
+    }
+    res.status(200).json({courses});
 });
 
 module.exports = {

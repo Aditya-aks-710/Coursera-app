@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { Router } = require("express");
 const { userModel } = require("../db");
-const { userAuth } = require("../auth");
+const { userAuth } = require("../middleware/userauth");
 const bcrypt = require("bcrypt");
 
 const userRouter = Router();
@@ -47,7 +47,7 @@ userRouter.post("/signin", async function(req, res) {
     if(response && passwordMatched){
         const token = jwt.sign({
             id: response._id.toString()
-        }, process.env.JWT_SECRET);
+        }, process.env.JWT_SECRET_USER);
         res.json({
             token: token
         });
